@@ -1,3 +1,5 @@
+import Canvas from "./components/Canvas.tsx";
+
 export default function App() {
-  return <h1>App</h1>;
+  return <Canvas />;
 }
