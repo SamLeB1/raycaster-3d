@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 class Vector2 {
   x: number;
@@ -15,6 +15,7 @@ const GRID_COLS = 10;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [p2, setP2] = useState<Vector2 | null>(null);
 
   function drawPoint(ctx: CanvasRenderingContext2D, p: Vector2, color: string) {
     ctx.fillStyle = color;
@@ -36,12 +37,17 @@ export default function Canvas() {
     ctx.stroke();
   }
 
+  function onMouseMove(e: MouseEvent) {
+    setP2(new Vector2(e.offsetX, e.offsetY));
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     const cellWidth = ctx.canvas.width / GRID_COLS;
     const cellHeight = ctx.canvas.height / GRID_ROWS;
     for (let i = 1; i < GRID_COLS; i++) {
@@ -61,12 +67,16 @@ export default function Canvas() {
       );
     }
 
-    const p1 = new Vector2(0.5 * cellWidth, 0.5 * cellHeight);
-    const p2 = new Vector2(5 * cellWidth, 5 * cellHeight);
+    const p1 = new Vector2(5 * cellWidth, 5 * cellHeight);
     drawPoint(ctx, p1, "oklch(63.7% 0.237 25.331)");
-    drawPoint(ctx, p2, "oklch(63.7% 0.237 25.331)");
-    strokeLine(ctx, p1, p2, "oklch(63.7% 0.237 25.331)");
-  }, []);
+    if (p2) {
+      drawPoint(ctx, p2, "oklch(63.7% 0.237 25.331)");
+      strokeLine(ctx, p1, p2, "oklch(63.7% 0.237 25.331)");
+    }
+
+    canvas.addEventListener("mousemove", onMouseMove);
+    return () => canvas.removeEventListener("mousemove", onMouseMove);
+  }, [p2]);
 
   return (
     <canvas
