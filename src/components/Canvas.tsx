@@ -16,6 +16,9 @@ class Vector2 {
   magnitude() {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
+  distanceTo(that: Vector2) {
+    return that.sub(this).magnitude();
+  }
   normalize() {
     const m = this.magnitude();
     if (m === 0) return new Vector2(0, 0);
@@ -30,8 +33,33 @@ export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [p2, setP2] = useState<Vector2 | null>(null);
 
+  function snap(x: number, dx: number) {
+    if (dx > 0) return Math.ceil(x);
+    else if (dx < 0) return Math.floor(x);
+    else return x;
+  }
+
   function rayStep(p1: Vector2, p2: Vector2) {
-    return p2.sub(p1).normalize().add(p2);
+    const d = p2.sub(p1);
+    if (d.x !== 0) {
+      const m = d.y / d.x;
+      const b = p1.y - m * p1.x;
+
+      const x3v = snap(p2.x, d.x);
+      const y3v = m * x3v + b;
+      const p3v = new Vector2(x3v, y3v);
+
+      if (m !== 0) {
+        const y3h = snap(p2.y, d.y);
+        const x3h = (y3h - b) / m;
+        const p3h = new Vector2(x3h, y3h);
+
+        return p2.distanceTo(p3v) <= p2.distanceTo(p3h) ? p3v : p3h;
+      } else return p3v;
+    } else {
+      const y3h = snap(p2.y, d.y);
+      return new Vector2(p2.x, y3h);
+    }
   }
 
   function getCellSize(ctx: CanvasRenderingContext2D) {
