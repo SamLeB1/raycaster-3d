@@ -28,14 +28,20 @@ class Vector2 {
 
 const GRID_ROWS = 10;
 const GRID_COLS = 10;
+const EPS = 1e-3;
+
+let scene: number[][] = Array(GRID_ROWS)
+  .fill(0)
+  .map(() => Array(GRID_COLS).fill(0));
+scene[1][1] = 1;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [p2, setP2] = useState<Vector2 | null>(null);
 
   function snap(x: number, dx: number) {
-    if (dx > 0) return Math.ceil(x);
-    else if (dx < 0) return Math.floor(x);
+    if (dx > 0) return Math.ceil(x + Math.sign(dx) * EPS);
+    else if (dx < 0) return Math.floor(x + Math.sign(dx) * EPS);
     else return x;
   }
 
@@ -60,6 +66,18 @@ export default function Canvas() {
       const y3h = snap(p2.y, d.y);
       return new Vector2(p2.x, y3h);
     }
+  }
+
+  function getCellHit(p1: Vector2, p2: Vector2) {
+    const d = p2.sub(p1);
+    return new Vector2(
+      Math.floor(p2.x + Math.sign(d.x) * EPS),
+      Math.floor(p2.y + Math.sign(d.y) * EPS),
+    );
+  }
+
+  function isValidIndex(i: Vector2) {
+    return i.x >= 0 && i.x < GRID_COLS && i.y >= 0 && i.y < GRID_ROWS;
   }
 
   function getCellSize(ctx: CanvasRenderingContext2D) {
@@ -114,6 +132,13 @@ export default function Canvas() {
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     const cellSize = getCellSize(ctx);
+
+    ctx.fillStyle = "oklch(44.6% 0.03 256.802)";
+    for (let i = 0; i < GRID_ROWS; i++)
+      for (let j = 0; j < GRID_COLS; j++)
+        if (scene[i][j] === 1)
+          ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+
     for (let i = 1; i < GRID_COLS; i++) {
       strokeLine(
         ctx,
@@ -134,11 +159,19 @@ export default function Canvas() {
     const p1 = new Vector2(5, 5);
     drawPoint(ctx, p1, "oklch(63.7% 0.237 25.331)", true);
     if (p2) {
-      drawPoint(ctx, p2, "oklch(63.7% 0.237 25.331)", true);
-      strokeLine(ctx, p1, p2, "oklch(63.7% 0.237 25.331)", true);
-      const p3 = rayStep(p1, p2);
-      drawPoint(ctx, p3, "oklch(63.7% 0.237 25.331)", true);
-      strokeLine(ctx, p2, p3, "oklch(63.7% 0.237 25.331)", true);
+      let pPrev = p1;
+      let pCurr = p2;
+      while (true) {
+        drawPoint(ctx, pCurr, "oklch(63.7% 0.237 25.331)", true);
+        strokeLine(ctx, pPrev, pCurr, "oklch(63.7% 0.237 25.331)", true);
+
+        const cellHit = getCellHit(pPrev, pCurr);
+        if (!isValidIndex(cellHit) || scene[cellHit.y][cellHit.x] === 1) break;
+
+        const pNext = rayStep(pPrev, pCurr);
+        pPrev = pCurr;
+        pCurr = pNext;
+      }
     }
 
     canvas.addEventListener("mousemove", (e) => onMouseMove(e, ctx));
