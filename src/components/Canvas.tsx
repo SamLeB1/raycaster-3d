@@ -13,6 +13,9 @@ class Vector2 {
   sub(that: Vector2) {
     return new Vector2(this.x - that.x, this.y - that.y);
   }
+  scale(n: number) {
+    return new Vector2(this.x * n, this.y * n);
+  }
   magnitude() {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
@@ -23,6 +26,9 @@ class Vector2 {
     const m = this.magnitude();
     if (m === 0) return new Vector2(0, 0);
     else return new Vector2(this.x / m, this.y / m);
+  }
+  equals(that: Vector2) {
+    return this.x === that.x && this.y === that.y;
   }
 }
 
@@ -87,6 +93,7 @@ export default function Canvas() {
   function drawPoint(
     ctx: CanvasRenderingContext2D,
     p: Vector2,
+    radius: number,
     color: string,
     isGrid = false,
   ) {
@@ -94,8 +101,8 @@ export default function Canvas() {
     ctx.beginPath();
     if (isGrid) {
       const cellSize = getCellSize(ctx);
-      ctx.arc(p.x * cellSize, p.y * cellSize, 10, 0, 2 * Math.PI);
-    } else ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+      ctx.arc(p.x * cellSize, p.y * cellSize, radius, 0, 2 * Math.PI);
+    } else ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
     ctx.fill();
   }
 
@@ -119,31 +126,22 @@ export default function Canvas() {
     ctx.stroke();
   }
 
-  function onMouseMove(e: MouseEvent, ctx: CanvasRenderingContext2D) {
-    const cellSize = getCellSize(ctx);
-    setP2(new Vector2(e.offsetX / cellSize, e.offsetY / cellSize));
+  function onMouseMove(e: MouseEvent) {
+    setP2(new Vector2(e.offsetX, e.offsetY));
   }
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const cellSize = getCellSize(ctx);
-
+  function renderMinimap(ctx: CanvasRenderingContext2D, scale: number) {
+    const cellSize = getCellSize(ctx) * scale;
     ctx.fillStyle = "oklch(44.6% 0.03 256.802)";
     for (let i = 0; i < GRID_ROWS; i++)
       for (let j = 0; j < GRID_COLS; j++)
         if (scene[i][j] === 1)
           ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
-
     for (let i = 1; i < GRID_COLS; i++) {
       strokeLine(
         ctx,
         new Vector2(i * cellSize, 0),
-        new Vector2(i * cellSize, ctx.canvas.height),
+        new Vector2(i * cellSize, ctx.canvas.height * scale),
         "oklch(44.6% 0.03 256.802)",
       );
     }
@@ -151,19 +149,38 @@ export default function Canvas() {
       strokeLine(
         ctx,
         new Vector2(0, i * cellSize),
-        new Vector2(ctx.canvas.width, i * cellSize),
+        new Vector2(ctx.canvas.width * scale, i * cellSize),
         "oklch(44.6% 0.03 256.802)",
       );
     }
 
     const p1 = new Vector2(5, 5);
-    drawPoint(ctx, p1, "oklch(63.7% 0.237 25.331)", true);
+    drawPoint(
+      ctx,
+      p1.scale(scale),
+      scale * 15,
+      "oklch(63.7% 0.237 25.331)",
+      true,
+    );
     if (p2) {
       let pPrev = p1;
-      let pCurr = p2;
+      let pCurr = p2.scale(1 / cellSize);
+      if (pPrev.equals(pCurr)) return;
       while (true) {
-        drawPoint(ctx, pCurr, "oklch(63.7% 0.237 25.331)", true);
-        strokeLine(ctx, pPrev, pCurr, "oklch(63.7% 0.237 25.331)", true);
+        drawPoint(
+          ctx,
+          pCurr.scale(scale),
+          scale * 15,
+          "oklch(63.7% 0.237 25.331)",
+          true,
+        );
+        strokeLine(
+          ctx,
+          pPrev.scale(scale),
+          pCurr.scale(scale),
+          "oklch(63.7% 0.237 25.331)",
+          true,
+        );
 
         const cellHit = getCellHit(pPrev, pCurr);
         if (!isValidIndex(cellHit) || scene[cellHit.y][cellHit.x] === 1) break;
@@ -173,10 +190,19 @@ export default function Canvas() {
         pCurr = pNext;
       }
     }
+  }
 
-    canvas.addEventListener("mousemove", (e) => onMouseMove(e, ctx));
-    return () =>
-      canvas.removeEventListener("mousemove", (e) => onMouseMove(e, ctx));
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    renderMinimap(ctx, 0.5);
+
+    canvas.addEventListener("mousemove", onMouseMove);
+    return () => canvas.removeEventListener("mousemove", onMouseMove);
   }, [p2]);
 
   return (
