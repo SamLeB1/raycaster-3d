@@ -87,7 +87,9 @@ export default function Canvas() {
   }
 
   function getCellSize(ctx: CanvasRenderingContext2D) {
-    return ctx.canvas.width / GRID_COLS;
+    const xCellSize = ctx.canvas.width / GRID_COLS;
+    const yCellSize = ctx.canvas.height / GRID_ROWS;
+    return Math.min(xCellSize, yCellSize);
   }
 
   function drawPoint(
@@ -132,7 +134,9 @@ export default function Canvas() {
 
   function renderMinimap(ctx: CanvasRenderingContext2D, scale: number) {
     const cellSize = getCellSize(ctx) * scale;
-    ctx.fillStyle = "oklch(44.6% 0.03 256.802)";
+    const minimapSize = new Vector2(cellSize * GRID_COLS, cellSize * GRID_ROWS);
+    const gridColor = "#fff";
+    ctx.fillStyle = gridColor;
     for (let i = 0; i < GRID_ROWS; i++)
       for (let j = 0; j < GRID_COLS; j++)
         if (scene[i][j] === 1)
@@ -141,27 +145,22 @@ export default function Canvas() {
       strokeLine(
         ctx,
         new Vector2(i * cellSize, 0),
-        new Vector2(i * cellSize, ctx.canvas.height * scale),
-        "oklch(44.6% 0.03 256.802)",
+        new Vector2(i * cellSize, minimapSize.y),
+        gridColor,
       );
     }
     for (let i = 1; i < GRID_ROWS; i++) {
       strokeLine(
         ctx,
         new Vector2(0, i * cellSize),
-        new Vector2(ctx.canvas.width * scale, i * cellSize),
-        "oklch(44.6% 0.03 256.802)",
+        new Vector2(minimapSize.x, i * cellSize),
+        gridColor,
       );
     }
 
+    const radius = cellSize / 4;
     const p1 = new Vector2(5, 5);
-    drawPoint(
-      ctx,
-      p1.scale(scale),
-      scale * 15,
-      "oklch(63.7% 0.237 25.331)",
-      true,
-    );
+    drawPoint(ctx, p1.scale(scale), radius, "oklch(63.7% 0.237 25.331)", true);
     if (p2) {
       let pPrev = p1;
       let pCurr = p2.scale(1 / cellSize);
@@ -170,7 +169,7 @@ export default function Canvas() {
         drawPoint(
           ctx,
           pCurr.scale(scale),
-          scale * 15,
+          radius,
           "oklch(63.7% 0.237 25.331)",
           true,
         );
