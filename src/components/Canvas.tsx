@@ -7,6 +7,9 @@ class Vector2 {
     this.x = x;
     this.y = y;
   }
+  static fromAngle(angle: number) {
+    return new Vector2(Math.cos(angle), Math.sin(angle));
+  }
   add(that: Vector2) {
     return new Vector2(this.x + that.x, this.y + that.y);
   }
@@ -15,6 +18,9 @@ class Vector2 {
   }
   scale(n: number) {
     return new Vector2(this.x * n, this.y * n);
+  }
+  rot90() {
+    return new Vector2(-this.y, this.x);
   }
   magnitude() {
     return Math.sqrt(this.x * this.x + this.y * this.y);
@@ -32,9 +38,20 @@ class Vector2 {
   }
 }
 
+class Player {
+  position: Vector2;
+  direction: number;
+  constructor(position: Vector2, direction: number) {
+    this.position = position;
+    this.direction = direction;
+  }
+}
+
 const GRID_ROWS = 10;
 const GRID_COLS = 10;
 const EPS = 1e-3;
+const NEAR_CLIPPING_PLANE = 0.5;
+const FOV = Math.PI / 2;
 
 let scene: number[][] = Array(GRID_ROWS)
   .fill(0)
@@ -43,7 +60,7 @@ scene[1][1] = 1;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [p2, setP2] = useState<Vector2 | null>(null);
+  const [player, setPlayer] = useState(new Player(new Vector2(5, 5), 0));
 
   function snap(x: number, dx: number) {
     if (dx > 0) return Math.ceil(x + Math.sign(dx) * EPS);
@@ -128,10 +145,6 @@ export default function Canvas() {
     ctx.stroke();
   }
 
-  function onMouseMove(e: MouseEvent) {
-    setP2(new Vector2(e.offsetX, e.offsetY));
-  }
-
   function renderMinimap(ctx: CanvasRenderingContext2D, scale: number) {
     const cellSize = getCellSize(ctx) * scale;
     const minimapSize = new Vector2(cellSize * GRID_COLS, cellSize * GRID_ROWS);
@@ -158,10 +171,41 @@ export default function Canvas() {
       );
     }
 
+    const opp = Math.tan(FOV / 2) * NEAR_CLIPPING_PLANE;
+    const pFront = player.position.add(
+      Vector2.fromAngle(player.direction).scale(NEAR_CLIPPING_PLANE),
+    );
+    const pLeft = pFront.sub(
+      pFront.sub(player.position).rot90().normalize().scale(opp),
+    );
+    const pRight = pFront.add(
+      pFront.sub(player.position).rot90().normalize().scale(opp),
+    );
+
     const radius = cellSize / 4;
-    const p1 = new Vector2(5, 5);
-    drawPoint(ctx, p1.scale(scale), radius, "oklch(63.7% 0.237 25.331)", true);
-    if (p2) {
+    drawPoint(
+      ctx,
+      player.position.scale(scale),
+      radius,
+      "oklch(63.7% 0.237 25.331)",
+      true,
+    );
+    drawPoint(
+      ctx,
+      pLeft.scale(scale),
+      radius / 2,
+      "oklch(62.3% 0.214 259.815)",
+      true,
+    );
+    drawPoint(
+      ctx,
+      pRight.scale(scale),
+      radius / 2,
+      "oklch(62.3% 0.214 259.815)",
+      true,
+    );
+
+    /* if (p2) {
       let pPrev = p1;
       let pCurr = p2.scale(1 / cellSize);
       if (pPrev.equals(pCurr)) return;
@@ -188,7 +232,7 @@ export default function Canvas() {
         pPrev = pCurr;
         pCurr = pNext;
       }
-    }
+    } */
   }
 
   useEffect(() => {
@@ -198,11 +242,8 @@ export default function Canvas() {
     if (!ctx) return;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    renderMinimap(ctx, 0.5);
-
-    canvas.addEventListener("mousemove", onMouseMove);
-    return () => canvas.removeEventListener("mousemove", onMouseMove);
-  }, [p2]);
+    renderMinimap(ctx, 1);
+  }, []);
 
   return (
     <canvas
