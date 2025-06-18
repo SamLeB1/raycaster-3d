@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
+type KeysPressed = {
+  w: boolean;
+  a: boolean;
+  s: boolean;
+  d: boolean;
+  left: boolean;
+  right: boolean;
+};
+
 class Vector2 {
   x: number;
   y: number;
@@ -41,9 +50,34 @@ class Vector2 {
 class Player {
   position: Vector2;
   direction: number;
-  constructor(position: Vector2, direction: number) {
+  speedMove: number;
+  speedTurn: number;
+  constructor(
+    position: Vector2,
+    direction: number,
+    speedMove: number,
+    speedTurn: number,
+  ) {
     this.position = position;
     this.direction = direction;
+    this.speedMove = speedMove;
+    this.speedTurn = speedTurn;
+  }
+  update(keysPressed: KeysPressed) {
+    let updatedPosition = { ...this.position };
+    let updatedDirection = this.direction;
+    if (keysPressed.w) updatedPosition.y -= this.speedMove;
+    if (keysPressed.a) updatedPosition.x -= this.speedMove;
+    if (keysPressed.s) updatedPosition.y += this.speedMove;
+    if (keysPressed.d) updatedPosition.x += this.speedMove;
+    if (keysPressed.left) updatedDirection -= this.speedTurn;
+    if (keysPressed.right) updatedDirection += this.speedTurn;
+    return new Player(
+      new Vector2(updatedPosition.x, updatedPosition.y),
+      updatedDirection,
+      this.speedMove,
+      this.speedTurn,
+    );
   }
 }
 
@@ -60,7 +94,18 @@ scene[1][1] = 1;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [player, setPlayer] = useState(new Player(new Vector2(5, 5), 0));
+  const requestId = useRef<number>(null);
+  const keysPressed = useRef<KeysPressed>({
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+    left: false,
+    right: false,
+  });
+  const [player, setPlayer] = useState(
+    new Player(new Vector2(5, 5), 0, 0.05, Math.PI / 90),
+  );
 
   function snap(x: number, dx: number) {
     if (dx > 0) return Math.ceil(x + Math.sign(dx) * EPS);
@@ -235,15 +280,49 @@ export default function Canvas() {
     } */
   }
 
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.code === "KeyW") keysPressed.current.w = true;
+    if (e.code === "KeyA") keysPressed.current.a = true;
+    if (e.code === "KeyS") keysPressed.current.s = true;
+    if (e.code === "KeyD") keysPressed.current.d = true;
+    if (e.code === "ArrowLeft") keysPressed.current.left = true;
+    if (e.code === "ArrowRight") keysPressed.current.right = true;
+  }
+
+  function onKeyUp(e: KeyboardEvent) {
+    if (e.code === "KeyW") keysPressed.current.w = false;
+    if (e.code === "KeyA") keysPressed.current.a = false;
+    if (e.code === "KeyS") keysPressed.current.s = false;
+    if (e.code === "KeyD") keysPressed.current.d = false;
+    if (e.code === "ArrowLeft") keysPressed.current.left = false;
+    if (e.code === "ArrowRight") keysPressed.current.right = false;
+  }
+
   useEffect(() => {
+    function gameLoop() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      setPlayer(player.update(keysPressed.current));
+      renderMinimap(ctx, 0.5);
+
+      requestId.current = requestAnimationFrame(gameLoop);
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    renderMinimap(ctx, 1);
-  }, []);
+    requestId.current = requestAnimationFrame(gameLoop);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      if (requestId.current) cancelAnimationFrame(requestId.current);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [player]);
 
   return (
     <canvas
