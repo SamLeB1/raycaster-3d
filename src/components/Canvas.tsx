@@ -136,6 +136,18 @@ export default function Canvas() {
     }
   }
 
+  function castRay(p1: Vector2, p2: Vector2) {
+    while (true) {
+      if (p1.equals(p2)) return p1;
+      const cellHit = getCellHit(p1, p2);
+      if (!isValidIndex(cellHit) || scene[cellHit.y][cellHit.x] === 1)
+        return p2;
+      const p3 = rayStep(p1, p2);
+      p1 = p2;
+      p2 = p3;
+    }
+  }
+
   function getCellHit(p1: Vector2, p2: Vector2) {
     const d = p2.sub(p1);
     return new Vector2(
@@ -249,35 +261,6 @@ export default function Canvas() {
       "oklch(62.3% 0.214 259.815)",
       true,
     );
-
-    /* if (p2) {
-      let pPrev = p1;
-      let pCurr = p2.scale(1 / cellSize);
-      if (pPrev.equals(pCurr)) return;
-      while (true) {
-        drawPoint(
-          ctx,
-          pCurr.scale(scale),
-          radius,
-          "oklch(63.7% 0.237 25.331)",
-          true,
-        );
-        strokeLine(
-          ctx,
-          pPrev.scale(scale),
-          pCurr.scale(scale),
-          "oklch(63.7% 0.237 25.331)",
-          true,
-        );
-
-        const cellHit = getCellHit(pPrev, pCurr);
-        if (!isValidIndex(cellHit) || scene[cellHit.y][cellHit.x] === 1) break;
-
-        const pNext = rayStep(pPrev, pCurr);
-        pPrev = pCurr;
-        pCurr = pNext;
-      }
-    } */
   }
 
   function onKeyDown(e: KeyboardEvent) {
