@@ -45,6 +45,9 @@ class Vector2 {
   equals(that: Vector2) {
     return this.x === that.x && this.y === that.y;
   }
+  lerp(that: Vector2, t: number) {
+    return that.sub(this).scale(t).add(this);
+  }
 }
 
 class Player {
@@ -79,18 +82,39 @@ class Player {
       this.speedTurn,
     );
   }
+  fovRange() {
+    const opp = Math.tan(FOV / 2) * NEAR_CLIPPING_PLANE;
+    const pFront = this.position.add(
+      Vector2.fromAngle(this.direction).scale(NEAR_CLIPPING_PLANE),
+    );
+    const pLeft = pFront.sub(
+      pFront.sub(this.position).rot90().normalize().scale(opp),
+    );
+    const pRight = pFront.add(
+      pFront.sub(this.position).rot90().normalize().scale(opp),
+    );
+    return [pLeft, pRight];
+  }
 }
 
 const GRID_ROWS = 10;
 const GRID_COLS = 10;
 const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 0.5;
+const FAR_CLIPPING_PLANE = 10;
 const FOV = Math.PI / 2;
+const RES = 100;
 
 let scene: number[][] = Array(GRID_ROWS)
   .fill(0)
   .map(() => Array(GRID_COLS).fill(0));
 scene[1][1] = 1;
+scene[1][2] = 1;
+scene[1][3] = 1;
+scene[2][1] = 1;
+scene[2][3] = 1;
+scene[3][1] = 1;
+scene[3][3] = 1;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -228,17 +252,7 @@ export default function Canvas() {
       );
     }
 
-    const opp = Math.tan(FOV / 2) * NEAR_CLIPPING_PLANE;
-    const pFront = player.position.add(
-      Vector2.fromAngle(player.direction).scale(NEAR_CLIPPING_PLANE),
-    );
-    const pLeft = pFront.sub(
-      pFront.sub(player.position).rot90().normalize().scale(opp),
-    );
-    const pRight = pFront.add(
-      pFront.sub(player.position).rot90().normalize().scale(opp),
-    );
-
+    const [pLeft, pRight] = player.fovRange();
     const radius = cellSize / 4;
     drawPoint(
       ctx,
@@ -261,6 +275,27 @@ export default function Canvas() {
       "oklch(62.3% 0.214 259.815)",
       true,
     );
+  }
+
+  function renderGame(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = "#fff";
+    const stripWidth = ctx.canvas.width / RES;
+    const [pLeft, pRight] = player.fovRange();
+    for (let i = 0; i < RES; i++) {
+      const p = castRay(player.position, pLeft.lerp(pRight, i / RES));
+      const cellHit = getCellHit(player.position, p);
+      if (isValidIndex(cellHit)) {
+        const stripHeight =
+          (1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE) *
+          ctx.canvas.height;
+        ctx.fillRect(
+          i * stripWidth,
+          (ctx.canvas.height - stripHeight) / 2,
+          stripWidth,
+          stripHeight,
+        );
+      }
+    }
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -287,6 +322,7 @@ export default function Canvas() {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
       setPlayer(player.update(keysPressed.current));
+      renderGame(ctx);
       renderMinimap(ctx, 0.5);
 
       requestId.current = requestAnimationFrame(gameLoop);
