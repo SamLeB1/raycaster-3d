@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isValidIndex } from "../utils";
 
 type KeysPressed = {
   w: boolean;
@@ -9,7 +10,7 @@ type KeysPressed = {
   right: boolean;
 };
 
-class Vector2 {
+export class Vector2 {
   x: number;
   y: number;
   constructor(x: number, y: number) {
@@ -69,12 +70,38 @@ class Player {
   update(keysPressed: KeysPressed) {
     let updatedPosition = { ...this.position };
     let updatedDirection = this.direction;
-    if (keysPressed.w) updatedPosition.y -= this.speedMove;
-    if (keysPressed.a) updatedPosition.x -= this.speedMove;
-    if (keysPressed.s) updatedPosition.y += this.speedMove;
-    if (keysPressed.d) updatedPosition.x += this.speedMove;
+    if (keysPressed.w) {
+      updatedPosition.x += Math.cos(this.direction) * this.speedMove;
+      updatedPosition.y += Math.sin(this.direction) * this.speedMove;
+    }
+    if (keysPressed.a) {
+      const angle = this.direction - Math.PI / 2;
+      updatedPosition.x += Math.cos(angle) * this.speedMove;
+      updatedPosition.y += Math.sin(angle) * this.speedMove;
+    }
+    if (keysPressed.s) {
+      const angle = this.direction + Math.PI;
+      updatedPosition.x += Math.cos(angle) * this.speedMove;
+      updatedPosition.y += Math.sin(angle) * this.speedMove;
+    }
+    if (keysPressed.d) {
+      const angle = this.direction + Math.PI / 2;
+      updatedPosition.x += Math.cos(angle) * this.speedMove;
+      updatedPosition.y += Math.sin(angle) * this.speedMove;
+    }
     if (keysPressed.left) updatedDirection -= this.speedTurn;
     if (keysPressed.right) updatedDirection += this.speedTurn;
+
+    const currCell = new Vector2(
+      Math.floor(updatedPosition.x),
+      Math.floor(updatedPosition.y),
+    );
+    if (
+      !isValidIndex(currCell, GRID_ROWS, GRID_COLS) ||
+      scene[currCell.y][currCell.x] === 1
+    )
+      updatedPosition = this.position;
+
     return new Player(
       new Vector2(updatedPosition.x, updatedPosition.y),
       updatedDirection,
@@ -164,7 +191,10 @@ export default function Canvas() {
     while (true) {
       if (p1.equals(p2)) return p1;
       const cellHit = getCellHit(p1, p2);
-      if (!isValidIndex(cellHit) || scene[cellHit.y][cellHit.x] === 1)
+      if (
+        !isValidIndex(cellHit, GRID_ROWS, GRID_COLS) ||
+        scene[cellHit.y][cellHit.x] === 1
+      )
         return p2;
       const p3 = rayStep(p1, p2);
       p1 = p2;
@@ -178,10 +208,6 @@ export default function Canvas() {
       Math.floor(p2.x + Math.sign(d.x) * EPS),
       Math.floor(p2.y + Math.sign(d.y) * EPS),
     );
-  }
-
-  function isValidIndex(i: Vector2) {
-    return i.x >= 0 && i.x < GRID_COLS && i.y >= 0 && i.y < GRID_ROWS;
   }
 
   function getCellSize(ctx: CanvasRenderingContext2D) {
@@ -234,7 +260,7 @@ export default function Canvas() {
     for (let i = 0; i < GRID_ROWS; i++)
       for (let j = 0; j < GRID_COLS; j++)
         if (scene[i][j] === 1)
-          ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+          ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
     for (let i = 1; i < GRID_COLS; i++) {
       strokeLine(
         ctx,
@@ -284,7 +310,7 @@ export default function Canvas() {
     for (let i = 0; i < RES; i++) {
       const p = castRay(player.position, pLeft.lerp(pRight, i / RES));
       const cellHit = getCellHit(player.position, p);
-      if (isValidIndex(cellHit)) {
+      if (isValidIndex(cellHit, GRID_ROWS, GRID_COLS)) {
         const stripHeight =
           (1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE) *
           ctx.canvas.height;
