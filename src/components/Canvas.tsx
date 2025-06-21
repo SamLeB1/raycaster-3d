@@ -157,6 +157,7 @@ export default function Canvas() {
   const [player, setPlayer] = useState(
     new Player(new Vector2(5, 5), 0, 0.05, Math.PI / 90),
   );
+  const [showMinimap, setShowMinimap] = useState(true);
 
   function snap(x: number, dx: number) {
     if (dx > 0) return Math.ceil(x + Math.sign(dx) * EPS);
@@ -236,9 +237,11 @@ export default function Canvas() {
     ctx: CanvasRenderingContext2D,
     p1: Vector2,
     p2: Vector2,
+    lineWidth: number,
     color: string,
     isGrid = false,
   ) {
+    ctx.lineWidth = lineWidth;
     ctx.strokeStyle = color;
     ctx.beginPath();
     if (isGrid) {
@@ -256,6 +259,9 @@ export default function Canvas() {
     const cellSize = getCellSize(ctx) * scale;
     const minimapSize = new Vector2(cellSize * GRID_COLS, cellSize * GRID_ROWS);
     const gridColor = "#fff";
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, minimapSize.x, minimapSize.y);
     ctx.fillStyle = gridColor;
     for (let i = 0; i < GRID_ROWS; i++)
       for (let j = 0; j < GRID_COLS; j++)
@@ -266,6 +272,7 @@ export default function Canvas() {
         ctx,
         new Vector2(i * cellSize, 0),
         new Vector2(i * cellSize, minimapSize.y),
+        1,
         gridColor,
       );
     }
@@ -274,31 +281,42 @@ export default function Canvas() {
         ctx,
         new Vector2(0, i * cellSize),
         new Vector2(minimapSize.x, i * cellSize),
+        1,
         gridColor,
       );
     }
 
     const [pLeft, pRight] = player.fovRange();
     const radius = cellSize / 4;
+    strokeLine(
+      ctx,
+      player.position.scale(scale),
+      pLeft.scale(scale),
+      2,
+      "oklch(88.5% 0.062 18.334)",
+      true,
+    );
+    strokeLine(
+      ctx,
+      player.position.scale(scale),
+      pRight.scale(scale),
+      2,
+      "oklch(88.5% 0.062 18.334)",
+      true,
+    );
+    strokeLine(
+      ctx,
+      pLeft.scale(scale),
+      pRight.scale(scale),
+      2,
+      "oklch(88.5% 0.062 18.334)",
+      true,
+    );
     drawPoint(
       ctx,
       player.position.scale(scale),
       radius,
       "oklch(63.7% 0.237 25.331)",
-      true,
-    );
-    drawPoint(
-      ctx,
-      pLeft.scale(scale),
-      radius / 2,
-      "oklch(62.3% 0.214 259.815)",
-      true,
-    );
-    drawPoint(
-      ctx,
-      pRight.scale(scale),
-      radius / 2,
-      "oklch(62.3% 0.214 259.815)",
       true,
     );
   }
@@ -314,12 +332,13 @@ export default function Canvas() {
         const stripHeight =
           (1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE) *
           ctx.canvas.height;
-        ctx.fillRect(
-          i * stripWidth,
-          (ctx.canvas.height - stripHeight) / 2,
-          stripWidth,
-          stripHeight,
-        );
+        if (stripHeight > 0)
+          ctx.fillRect(
+            i * stripWidth,
+            (ctx.canvas.height - stripHeight) / 2,
+            stripWidth,
+            stripHeight,
+          );
       }
     }
   }
@@ -331,6 +350,7 @@ export default function Canvas() {
     if (e.code === "KeyD") keysPressed.current.d = true;
     if (e.code === "ArrowLeft") keysPressed.current.left = true;
     if (e.code === "ArrowRight") keysPressed.current.right = true;
+    if (e.code === "KeyM" && !e.repeat) setShowMinimap(!showMinimap);
   }
 
   function onKeyUp(e: KeyboardEvent) {
@@ -349,7 +369,7 @@ export default function Canvas() {
 
       setPlayer(player.update(keysPressed.current));
       renderGame(ctx);
-      renderMinimap(ctx, 0.5);
+      if (showMinimap) renderMinimap(ctx, 0.5);
 
       requestId.current = requestAnimationFrame(gameLoop);
     }
@@ -373,7 +393,7 @@ export default function Canvas() {
     <canvas
       ref={canvasRef}
       id="canvas"
-      className="absolute top-1/2 left-1/2 -translate-1/2 bg-gray-900"
+      className="absolute top-1/2 left-1/2 -translate-1/2 bg-black"
       width="600px"
       height="600px"
     ></canvas>
