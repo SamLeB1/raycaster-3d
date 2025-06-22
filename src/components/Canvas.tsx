@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Vector2 } from "../utils/Vector2";
 import { isValidIndex } from "../utils";
+import { scene1 as scene } from "../scenes";
 
 type KeysPressed = {
   w: boolean;
@@ -9,47 +11,6 @@ type KeysPressed = {
   left: boolean;
   right: boolean;
 };
-
-export class Vector2 {
-  x: number;
-  y: number;
-  constructor(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
-  static fromAngle(angle: number) {
-    return new Vector2(Math.cos(angle), Math.sin(angle));
-  }
-  add(that: Vector2) {
-    return new Vector2(this.x + that.x, this.y + that.y);
-  }
-  sub(that: Vector2) {
-    return new Vector2(this.x - that.x, this.y - that.y);
-  }
-  scale(n: number) {
-    return new Vector2(this.x * n, this.y * n);
-  }
-  rot90() {
-    return new Vector2(-this.y, this.x);
-  }
-  magnitude() {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
-  }
-  distanceTo(that: Vector2) {
-    return that.sub(this).magnitude();
-  }
-  normalize() {
-    const m = this.magnitude();
-    if (m === 0) return new Vector2(0, 0);
-    else return new Vector2(this.x / m, this.y / m);
-  }
-  equals(that: Vector2) {
-    return this.x === that.x && this.y === that.y;
-  }
-  lerp(that: Vector2, t: number) {
-    return that.sub(this).scale(t).add(this);
-  }
-}
 
 class Player {
   position: Vector2;
@@ -97,8 +58,8 @@ class Player {
       Math.floor(updatedPosition.y),
     );
     if (
-      !isValidIndex(currCell, GRID_ROWS, GRID_COLS) ||
-      scene[currCell.y][currCell.x] === 1
+      !isValidIndex(currCell, scene.size.y, scene.size.x) ||
+      scene.scene[currCell.y][currCell.x] === 1
     )
       updatedPosition = this.position;
 
@@ -124,24 +85,11 @@ class Player {
   }
 }
 
-const GRID_ROWS = 10;
-const GRID_COLS = 10;
 const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 0.5;
 const FAR_CLIPPING_PLANE = 10;
 const FOV = Math.PI / 2;
 const RES = 100;
-
-let scene: number[][] = Array(GRID_ROWS)
-  .fill(0)
-  .map(() => Array(GRID_COLS).fill(0));
-scene[1][1] = 1;
-scene[1][2] = 1;
-scene[1][3] = 1;
-scene[2][1] = 1;
-scene[2][3] = 1;
-scene[3][1] = 1;
-scene[3][3] = 1;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -155,7 +103,7 @@ export default function Canvas() {
     right: false,
   });
   const [player, setPlayer] = useState(
-    new Player(new Vector2(5, 5), 0, 0.05, Math.PI / 90),
+    new Player(scene.start, 0, 0.05, Math.PI / 90),
   );
   const [showMinimap, setShowMinimap] = useState(true);
 
@@ -193,8 +141,8 @@ export default function Canvas() {
       if (p1.equals(p2)) return p1;
       const cellHit = getCellHit(p1, p2);
       if (
-        !isValidIndex(cellHit, GRID_ROWS, GRID_COLS) ||
-        scene[cellHit.y][cellHit.x] === 1
+        !isValidIndex(cellHit, scene.size.y, scene.size.x) ||
+        scene.scene[cellHit.y][cellHit.x] === 1
       )
         return p2;
       const p3 = rayStep(p1, p2);
@@ -212,8 +160,8 @@ export default function Canvas() {
   }
 
   function getCellSize(ctx: CanvasRenderingContext2D) {
-    const xCellSize = ctx.canvas.width / GRID_COLS;
-    const yCellSize = ctx.canvas.height / GRID_ROWS;
+    const xCellSize = ctx.canvas.width / scene.size.x;
+    const yCellSize = ctx.canvas.height / scene.size.y;
     return Math.min(xCellSize, yCellSize);
   }
 
@@ -257,17 +205,20 @@ export default function Canvas() {
 
   function renderMinimap(ctx: CanvasRenderingContext2D, scale: number) {
     const cellSize = getCellSize(ctx) * scale;
-    const minimapSize = new Vector2(cellSize * GRID_COLS, cellSize * GRID_ROWS);
+    const minimapSize = new Vector2(
+      cellSize * scene.size.x,
+      cellSize * scene.size.y,
+    );
     const gridColor = "#fff";
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(0, 0, minimapSize.x, minimapSize.y);
     ctx.fillStyle = gridColor;
-    for (let i = 0; i < GRID_ROWS; i++)
-      for (let j = 0; j < GRID_COLS; j++)
-        if (scene[i][j] === 1)
+    for (let i = 0; i < scene.size.y; i++)
+      for (let j = 0; j < scene.size.x; j++)
+        if (scene.scene[i][j] === 1)
           ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
-    for (let i = 1; i < GRID_COLS; i++) {
+    for (let i = 1; i < scene.size.x; i++) {
       strokeLine(
         ctx,
         new Vector2(i * cellSize, 0),
@@ -276,7 +227,7 @@ export default function Canvas() {
         gridColor,
       );
     }
-    for (let i = 1; i < GRID_ROWS; i++) {
+    for (let i = 1; i < scene.size.y; i++) {
       strokeLine(
         ctx,
         new Vector2(0, i * cellSize),
@@ -328,17 +279,18 @@ export default function Canvas() {
     for (let i = 0; i < RES; i++) {
       const p = castRay(player.position, pLeft.lerp(pRight, i / RES));
       const cellHit = getCellHit(player.position, p);
-      if (isValidIndex(cellHit, GRID_ROWS, GRID_COLS)) {
-        const stripHeight =
-          (1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE) *
-          ctx.canvas.height;
-        if (stripHeight > 0)
+      if (isValidIndex(cellHit, scene.size.y, scene.size.x)) {
+        const t = 1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE;
+        if (t > 0) {
+          const stripHeight = t * ctx.canvas.height;
+          ctx.fillStyle = `hsl(0, 0%, ${t * 100}%)`;
           ctx.fillRect(
             i * stripWidth,
             (ctx.canvas.height - stripHeight) / 2,
             stripWidth,
             stripHeight,
           );
+        }
       }
     }
   }
