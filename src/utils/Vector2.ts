@@ -37,4 +37,7 @@ export class Vector2 {
   lerp(that: Vector2, t: number) {
     return that.sub(this).scale(t).add(this);
   }
+  dot(that: Vector2) {
+    return this.x * that.x + this.y * that.y;
+  }
 }

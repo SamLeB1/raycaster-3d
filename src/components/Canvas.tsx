@@ -89,7 +89,7 @@ const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 0.5;
 const FAR_CLIPPING_PLANE = 10;
 const FOV = Math.PI / 2;
-const RES = 100;
+const RES = 600;
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -280,9 +280,12 @@ export default function Canvas() {
       const p = castRay(player.position, pLeft.lerp(pRight, i / RES));
       const cellHit = getCellHit(player.position, p);
       if (isValidIndex(cellHit, scene.size.y, scene.size.x)) {
-        const t = 1 - player.position.distanceTo(p) / FAR_CLIPPING_PLANE;
+        const perpWallDist = p
+          .sub(player.position)
+          .dot(Vector2.fromAngle(player.direction));
+        const t = 1 - perpWallDist / FAR_CLIPPING_PLANE;
         if (t > 0) {
-          const stripHeight = t * ctx.canvas.height;
+          const stripHeight = ctx.canvas.height / perpWallDist;
           ctx.fillStyle = `hsl(0, 0%, ${t * 100}%)`;
           ctx.fillRect(
             i * stripWidth,
