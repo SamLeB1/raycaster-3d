@@ -298,6 +298,19 @@ export default function Canvas() {
     }
   }
 
+  function renderBg(
+    ctx: CanvasRenderingContext2D,
+    color1: string,
+    color2: string,
+  ) {
+    const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    grad.addColorStop(0, color1);
+    grad.addColorStop(0.5, color2);
+    grad.addColorStop(1, color1);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     if (e.code === "KeyW") keysPressed.current.w = true;
     if (e.code === "KeyA") keysPressed.current.a = true;
@@ -323,6 +336,7 @@ export default function Canvas() {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
       setPlayer(player.update(keysPressed.current));
+      renderBg(ctx, "hsl(0, 0%, 50%)", "hsl(0, 0%, 0%)");
       renderGame(ctx);
       if (showMinimap) renderMinimap(ctx, 0.5);
 
