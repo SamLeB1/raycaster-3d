@@ -1,6 +1,6 @@
 import { Vector2 } from "./utils/Vector2";
 
-type Scene = {
+export type Scene = {
   scene: number[][];
   size: Vector2;
   start: Vector2;

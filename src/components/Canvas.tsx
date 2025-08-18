@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Vector2 } from "../utils/Vector2";
 import { isValidIndex } from "../utils";
-import { scene1 as scene } from "../scenes";
+import { generateMaze } from "../utils/mazeGenerator";
 
 type KeysPressed = {
   w: boolean;
@@ -85,6 +85,7 @@ class Player {
   }
 }
 
+const scene = generateMaze(15, 15);
 const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 0.5;
 const FAR_CLIPPING_PLANE = 10;
