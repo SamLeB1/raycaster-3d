@@ -143,7 +143,7 @@ export default function Canvas() {
       const cellHit = getCellHit(p1, p2);
       if (
         !isValidIndex(cellHit, scene.size.y, scene.size.x) ||
-        scene.scene[cellHit.y][cellHit.x] === 1
+        scene.scene[cellHit.y][cellHit.x] > 0
       )
         return p2;
       const p3 = rayStep(p1, p2);
@@ -216,9 +216,15 @@ export default function Canvas() {
     ctx.fillRect(0, 0, minimapSize.x, minimapSize.y);
     ctx.fillStyle = gridColor;
     for (let i = 0; i < scene.size.y; i++)
-      for (let j = 0; j < scene.size.x; j++)
+      for (let j = 0; j < scene.size.x; j++) {
         if (scene.scene[i][j] === 1)
           ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+        if (scene.scene[i][j] === 2) {
+          ctx.fillStyle = "hsl(120, 100%, 50%)";
+          ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+          ctx.fillStyle = gridColor;
+        }
+      }
     for (let i = 1; i < scene.size.x; i++) {
       strokeLine(
         ctx,
@@ -287,7 +293,9 @@ export default function Canvas() {
         const t = 1 - perpWallDist / FAR_CLIPPING_PLANE;
         if (t > 0) {
           const stripHeight = ctx.canvas.height / perpWallDist;
-          ctx.fillStyle = `hsl(0, 0%, ${t * 100}%)`;
+          if (scene.scene[cellHit.y][cellHit.x] === 1)
+            ctx.fillStyle = `hsl(0, 0%, ${t * 100}%)`;
+          else ctx.fillStyle = `hsl(120, 100%, ${t * 50}%)`;
           ctx.fillRect(
             i * stripWidth,
             (ctx.canvas.height - stripHeight) / 2,

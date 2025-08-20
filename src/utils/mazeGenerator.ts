@@ -30,10 +30,12 @@ export function generateMaze(width: number, height: number): Scene {
       addWalls(newX, newY);
     }
   }
+  const { start, end } = getRandomStartEndCoords();
+  maze[end.y][end.x] = 2;
   return {
     scene: maze,
     size: new Vector2(width, height),
-    start: new Vector2(startX, startY),
+    start,
   };
 
   function addWalls(cx: number, cy: number) {
@@ -62,6 +64,38 @@ export function generateMaze(width: number, height: number): Scene {
           walls.push({ x: wallX, y: wallY, dx: dir.dx, dy: dir.dy });
         }
       }
+    }
+  }
+
+  function getRandomStartEndCoords() {
+    if (Math.floor(Math.random() * 2)) {
+      const endX = Math.floor(Math.random() * 2) ? 0 : width - 1;
+      let endY = Math.floor(Math.random() * (height - 1)) + 1;
+      if (endY % 2 === 0) endY--;
+
+      const startX = endX === 0 ? width - 1.5 : 1.5;
+      let startY = Math.floor(Math.random() * (height - 1)) + 1;
+      if (startY % 2 === 0) startY--;
+      startY += 0.5;
+
+      return {
+        start: new Vector2(startX, startY),
+        end: new Vector2(endX, endY),
+      };
+    } else {
+      let endX = Math.floor(Math.random() * (width - 1)) + 1;
+      if (endX % 2 === 0) endX--;
+      const endY = Math.floor(Math.random() * 2) ? 0 : height - 1;
+
+      let startX = Math.floor(Math.random() * (width - 1)) + 1;
+      if (startX % 2 === 0) startX--;
+      startX += 0.5;
+      const startY = endY === 0 ? height - 1.5 : 1.5;
+
+      return {
+        start: new Vector2(startX, startY),
+        end: new Vector2(endX, endY),
+      };
     }
   }
 }
