@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Vector2 } from "../utils/Vector2";
 import { isValidIndex } from "../utils";
 import { generateMaze } from "../utils/mazeGenerator";
+import type { Scene } from "../scenes";
 
 type KeysPressed = {
   w: boolean;
@@ -17,16 +18,19 @@ class Player {
   direction: number;
   speedMove: number;
   speedTurn: number;
+  scene: Scene;
   constructor(
     position: Vector2,
     direction: number,
     speedMove: number,
     speedTurn: number,
+    scene: Scene,
   ) {
     this.position = position;
     this.direction = direction;
     this.speedMove = speedMove;
     this.speedTurn = speedTurn;
+    this.scene = scene;
   }
   update(keysPressed: KeysPressed) {
     let updatedPosition = { ...this.position };
@@ -58,8 +62,8 @@ class Player {
       Math.floor(updatedPosition.y),
     );
     if (
-      !isValidIndex(currCell, scene.size.y, scene.size.x) ||
-      scene.scene[currCell.y][currCell.x] === 1
+      !isValidIndex(currCell, this.scene.size.y, this.scene.size.x) ||
+      this.scene.scene[currCell.y][currCell.x] === 1
     )
       updatedPosition = this.position;
 
@@ -68,6 +72,7 @@ class Player {
       updatedDirection,
       this.speedMove,
       this.speedTurn,
+      this.scene,
     );
   }
   fovRange() {
@@ -85,7 +90,6 @@ class Player {
   }
 }
 
-const scene = generateMaze(15, 15);
 const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 0.5;
 const FAR_CLIPPING_PLANE = 10;
@@ -103,8 +107,9 @@ export default function Canvas() {
     left: false,
     right: false,
   });
+  const [scene, setScene] = useState<Scene>(generateMaze(15, 15));
   const [player, setPlayer] = useState(
-    new Player(scene.start, 0, 0.05, Math.PI / 90),
+    new Player(scene.start, 0, 0.05, Math.PI / 90, scene),
   );
   const [showMinimap, setShowMinimap] = useState(true);
 
@@ -344,7 +349,16 @@ export default function Canvas() {
       if (!ctx) return;
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-      setPlayer(player.update(keysPressed.current));
+      const currCell = new Vector2(
+        Math.floor(player.position.x),
+        Math.floor(player.position.y),
+      );
+      if (scene.scene[currCell.y][currCell.x] === 2) {
+        const maze = generateMaze(15, 15);
+        setScene(maze);
+        setPlayer(new Player(maze.start, 0, 0.05, Math.PI / 90, maze));
+      } else setPlayer(player.update(keysPressed.current));
+
       renderBg(ctx, "hsl(0, 0%, 50%)", "hsl(0, 0%, 0%)");
       renderGame(ctx);
       if (showMinimap) renderMinimap(ctx, 0.5);
