@@ -2,6 +2,10 @@ import { Vector2 } from "./Vector2";
 import type { Scene } from "../scenes";
 
 export function generateMaze(width: number, height: number): Scene {
+  if (width < 5) width = 5;
+  if (width > 249) width = 249;
+  if (height < 5) height = 5;
+  if (height > 249) height = 249;
   if (width % 2 === 0) width++;
   if (height % 2 === 0) height++;
   const maze: number[][] = Array(height)

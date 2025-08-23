@@ -107,7 +107,11 @@ export default function Canvas() {
     left: false,
     right: false,
   });
-  const [scene, setScene] = useState<Scene>(generateMaze(15, 15));
+  const [mazeWidth, setMazeWidth] = useState(15);
+  const [mazeHeight, setMazeHeight] = useState(15);
+  const [scene, setScene] = useState<Scene>(
+    generateMaze(mazeWidth, mazeHeight),
+  );
   const [player, setPlayer] = useState(
     new Player(scene.start, 0, 0.05, Math.PI / 90, scene),
   );
@@ -344,6 +348,28 @@ export default function Canvas() {
     if (e.code === "ArrowRight") keysPressed.current.right = false;
   }
 
+  function initNewLevel() {
+    if (mazeWidth < 5) setMazeWidth(5);
+    if (mazeWidth > 249) setMazeWidth(249);
+    if (mazeHeight < 5) setMazeHeight(5);
+    if (mazeHeight > 249) setMazeHeight(249);
+    const maze = generateMaze(mazeWidth, mazeHeight);
+    setScene(maze);
+    setPlayer(new Player(maze.start, 0, 0.05, Math.PI / 90, maze));
+  }
+
+  function handleChangeWidth(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = parseInt(e.target.value);
+    if (isNaN(value)) setMazeWidth(0);
+    else setMazeWidth(value);
+  }
+
+  function handleChangeHeight(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = parseInt(e.target.value);
+    if (isNaN(value)) setMazeHeight(0);
+    else setMazeHeight(value);
+  }
+
   useEffect(() => {
     function gameLoop() {
       if (!ctx) return;
@@ -353,11 +379,8 @@ export default function Canvas() {
         Math.floor(player.position.x),
         Math.floor(player.position.y),
       );
-      if (scene.scene[currCell.y][currCell.x] === 2) {
-        const maze = generateMaze(15, 15);
-        setScene(maze);
-        setPlayer(new Player(maze.start, 0, 0.05, Math.PI / 90, maze));
-      } else setPlayer(player.update(keysPressed.current));
+      if (scene.scene[currCell.y][currCell.x] === 2) initNewLevel();
+      else setPlayer(player.update(keysPressed.current));
 
       renderBg(ctx, "hsl(0, 0%, 50%)", "hsl(0, 0%, 0%)");
       renderGame(ctx);
@@ -382,12 +405,45 @@ export default function Canvas() {
   }, [player]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      id="canvas"
-      className="absolute top-1/2 left-1/2 -translate-1/2 bg-black"
-      width="600px"
-      height="600px"
-    ></canvas>
+    <div className="flex">
+      <canvas
+        ref={canvasRef}
+        id="canvas"
+        className="mr-4 bg-black"
+        width="600px"
+        height="600px"
+      ></canvas>
+      <div>
+        <label htmlFor="width">Width: </label>
+        <input
+          className="mr-2 w-14 border pl-1"
+          type="number"
+          id="width"
+          name="width"
+          min="5"
+          max="249"
+          value={mazeWidth ? mazeWidth : ""}
+          onChange={handleChangeWidth}
+        />
+        <label htmlFor="height">Height: </label>
+        <input
+          className="mr-2 w-14 border pl-1"
+          type="number"
+          id="height"
+          name="height"
+          min="5"
+          max="249"
+          value={mazeHeight ? mazeHeight : ""}
+          onChange={handleChangeHeight}
+        />
+        <button
+          className="cursor-pointer border bg-gray-200 px-2 hover:bg-gray-300"
+          type="button"
+          onClick={initNewLevel}
+        >
+          Generate
+        </button>
+      </div>
+    </div>
   );
 }
